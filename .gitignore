@@ -1,0 +1,17 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+build/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# AWS
+.aws/
+.env
