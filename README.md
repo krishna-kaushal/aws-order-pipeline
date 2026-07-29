@@ -35,6 +35,12 @@ DynamoDB      SQS (order_queue)
                   notify Lambda (logs)
 ```
 
+## End-to-end flow
+
+![End-to-end flow diagram](docs/e2e-flow.png)
+
+The Mermaid source for this diagram is in `docs/e2e-flow.mmd` and can be opened in [Mermaid Live Editor](https://mermaid.live).
+
 ## Services used
 
 - API Gateway HTTP API v2
@@ -56,6 +62,9 @@ DynamoDB      SQS (order_queue)
 ```
 .
 ├── Makefile
+├── docs/
+│   ├── e2e-flow.mmd
+│   └── e2e-flow.png
 ├── payload.json
 ├── payload_fail.json
 ├── requirements.txt

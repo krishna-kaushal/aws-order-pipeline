@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant AG as API Gateway
+    participant CO as create_order Lambda
+    participant GO as get_order Lambda
+    participant DB as DynamoDB
+    participant Q as SQS order_queue
+    participant PP as process_payment Lambda
+    participant SNS as SNS Topic
+    participant N as notify Lambda
+
+    C->>AG: POST /orders
+    AG->>CO: Invoke
+    CO->>DB: put_item (status=PENDING)
+    CO->>Q: send_message
+    CO-->>AG: {order_id, status: PENDING}
+    AG-->>C: 201 Created
+
+    Q->>PP: Trigger
+    PP->>DB: update_item (status=COMPLETED or FAILED)
+    PP->>SNS: publish
+    SNS->>N: Trigger
+
+    C->>AG: GET /orders/{order_id}
+    AG->>GO: Invoke
+    GO->>DB: get_item
+    DB-->>GO: Item
+    GO-->>AG: {order_id, status, ...}
+    AG-->>C: 200 OK
