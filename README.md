@@ -7,16 +7,21 @@ Built with **Python** and **Terraform** on the **AWS Free Plan** in `ap-south-1`
 ## Architecture
 
 ```
-POST /orders
+POST /orders                GET /orders/{order_id}
+  |                              |
+  +------------------------------+
+                 |
+                 v
+       API Gateway (HTTP API v2)
+                 |
+       +---------+---------+
+       v                   v
+create_order Lambda    get_order Lambda
+  |                         |
+  |                         v
+  |                   DynamoDB (orders)
   |
   v
-API Gateway (HTTP API v2)
-  |
-  v
-create_order Lambda
-  |           \
-  |            \
-  v             v
 DynamoDB      SQS (order_queue)
 (orders)           |
                    v
@@ -56,10 +61,12 @@ DynamoDB      SQS (order_queue)
 ├── requirements.txt
 ├── src/
 │   ├── create_order.py
+│   ├── get_order.py
 │   ├── process_payment.py
 │   └── notify.py
 ├── tests/
-│   └── test_create_order.py
+│   ├── test_create_order.py
+│   └── test_get_order.py
 └── terraform/
     ├── main.tf
     ├── variables.tf
@@ -115,6 +122,28 @@ curl -X POST $(terraform -chdir=terraform output -raw api_endpoint) \
 
 Check the DynamoDB table in the console to see the order move from `PENDING` to `COMPLETED` or `FAILED`.
 
+### Fetch an order by id
+
+Save the returned `order_id` and fetch the current status:
+
+```bash
+ORDER_ID=e54565f3-4040-4a15-a152-3c7366434ba8
+curl -X GET $(terraform -chdir=terraform output -raw api_endpoint)/$ORDER_ID
+```
+
+Expected response after payment processing:
+
+```json
+{
+  "order_id": "...",
+  "product_id": "prod-123",
+  "customer_id": "cust-456",
+  "quantity": 2,
+  "amount": "49.99",
+  "status": "COMPLETED"
+}
+```
+
 ## Destroy
 
 ```bash
@@ -132,6 +161,7 @@ This removes all AWS resources and stops any charges.
 ## What to say in an interview
 
 - "I built an event-driven order pipeline with API Gateway, Lambda, DynamoDB, SQS, and SNS."
+- "It has both a `POST /orders` endpoint to create orders and a `GET /orders/{order_id}` endpoint to fetch order status."
 - "I used Terraform so the entire infrastructure is version-controlled and repeatable."
 - "I used a Dead-Letter Queue for failed payment processing and CloudWatch for observability."
 - "It stays inside the AWS Free Tier, so it costs almost nothing to run."

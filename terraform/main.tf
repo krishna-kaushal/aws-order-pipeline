@@ -25,6 +25,7 @@ provider "aws" {
 
 locals {
   create_order_fn    = "${var.project_name}-create-order"
+  get_order_fn       = "${var.project_name}-get-order"
   process_payment_fn = "${var.project_name}-process-payment"
   notify_fn          = "${var.project_name}-notify"
 }
@@ -143,6 +144,12 @@ data "archive_file" "notify" {
   output_path = "${path.module}/../build/notify.zip"
 }
 
+data "archive_file" "get_order" {
+  type        = "zip"
+  source_file = "${path.module}/../src/get_order.py"
+  output_path = "${path.module}/../build/get_order.zip"
+}
+
 # CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "create_order" {
   name              = "/aws/lambda/${local.create_order_fn}"
@@ -156,6 +163,11 @@ resource "aws_cloudwatch_log_group" "process_payment" {
 
 resource "aws_cloudwatch_log_group" "notify" {
   name              = "/aws/lambda/${local.notify_fn}"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "get_order" {
+  name              = "/aws/lambda/${local.get_order_fn}"
   retention_in_days = 7
 }
 
@@ -213,6 +225,25 @@ resource "aws_lambda_function" "notify" {
   depends_on = [aws_cloudwatch_log_group.notify]
 }
 
+resource "aws_lambda_function" "get_order" {
+  function_name    = local.get_order_fn
+  handler          = "get_order.lambda_handler"
+  runtime          = "python3.12"
+  role             = aws_iam_role.lambda_role.arn
+  filename         = data.archive_file.get_order.output_path
+  source_code_hash = data.archive_file.get_order.output_base64sha256
+  timeout          = 10
+  memory_size      = 128
+
+  environment {
+    variables = {
+      ORDERS_TABLE = aws_dynamodb_table.orders.name
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.get_order]
+}
+
 # SQS trigger for payment processor
 resource "aws_lambda_event_source_mapping" "payment_sqs_trigger" {
   event_source_arn = aws_sqs_queue.order_queue.arn
@@ -255,6 +286,20 @@ resource "aws_apigatewayv2_route" "create_order" {
   target    = "integrations/${aws_apigatewayv2_integration.create_order.id}"
 }
 
+resource "aws_apigatewayv2_integration" "get_order" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.get_order.invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "get_order" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /orders/{order_id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_order.id}"
+}
+
 resource "aws_apigatewayv2_stage" "api" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "prod"
@@ -265,6 +310,14 @@ resource "aws_lambda_permission" "apig_invoke" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.create_order.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "apig_invoke_get_order" {
+  statement_id  = "AllowAPIGatewayInvokeGetOrder"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_order.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }
