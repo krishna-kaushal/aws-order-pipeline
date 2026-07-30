@@ -15,7 +15,7 @@ destroy:
 	@cd terraform && terraform destroy -auto-approve
 
 test:
-	@cd terraform && terraform output -raw api_endpoint
+	@python -m pytest tests/ -v
 
 clean:
 	@rm -rf build .terraform *.tfstate *.tfstate.* terraform/.terraform terraform/*.tfstate terraform/*.tfstate.*
