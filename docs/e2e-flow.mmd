@@ -3,6 +3,7 @@ sequenceDiagram
     participant C as Client
     participant AG as API Gateway
     participant CO as create_order Lambda
+    participant IK as IdempotencyKeys
     participant GO as get_order Lambda
     participant DB as DynamoDB
     participant Q as SQS order_queue
@@ -10,10 +11,14 @@ sequenceDiagram
     participant SNS as SNS Topic
     participant N as notify Lambda
 
-    C->>AG: POST /orders
+    C->>AG: POST /orders (Idempotency-Key)
     AG->>CO: Invoke
-    CO->>DB: put_item (status=PENDING)
-    CO->>Q: send_message
+    CO->>IK: get_item (check key)
+    alt key not found
+        CO->>DB: put_item (status=PENDING)
+        CO->>Q: send_message
+        CO->>IK: put_item (store key + response)
+    end
     CO-->>AG: {order_id, status: PENDING}
     AG-->>C: 201 Created
 

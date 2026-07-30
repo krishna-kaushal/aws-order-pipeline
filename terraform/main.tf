@@ -42,6 +42,22 @@ resource "aws_dynamodb_table" "orders" {
   }
 }
 
+resource "aws_dynamodb_table" "idempotency_keys" {
+  name         = "${var.project_name}-idempotency-keys"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "idempotency_key"
+
+  attribute {
+    name = "idempotency_key"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+}
+
 # SQS
 resource "aws_sqs_queue" "order_dlq" {
   name = "${var.project_name}-order-dlq"
@@ -102,7 +118,10 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "dynamodb:GetItem",
           "dynamodb:UpdateItem"
         ]
-        Resource = aws_dynamodb_table.orders.arn
+        Resource = [
+          aws_dynamodb_table.orders.arn,
+          aws_dynamodb_table.idempotency_keys.arn
+        ]
       },
       {
         Effect = "Allow"
@@ -184,8 +203,9 @@ resource "aws_lambda_function" "create_order" {
 
   environment {
     variables = {
-      ORDERS_TABLE  = aws_dynamodb_table.orders.name
-      ORDER_QUEUE_URL = aws_sqs_queue.order_queue.url
+      ORDERS_TABLE       = aws_dynamodb_table.orders.name
+      IDEMPOTENCY_TABLE  = aws_dynamodb_table.idempotency_keys.name
+      ORDER_QUEUE_URL    = aws_sqs_queue.order_queue.url
     }
   }
 

@@ -112,6 +112,7 @@ Place an order:
 ```bash
 curl -X POST $(terraform -chdir=terraform output -raw api_endpoint) \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
   -d @payload.json
 ```
 
@@ -121,11 +122,14 @@ Expected response:
 {"order_id": "...", "status": "PENDING"}
 ```
 
+The `Idempotency-Key` header prevents duplicate orders when the request is retried. Sending the same key twice returns the same order.
+
 To see the failure path (amount > 1000 is rejected):
 
 ```bash
 curl -X POST $(terraform -chdir=terraform output -raw api_endpoint) \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
   -d @payload_fail.json
 ```
 
@@ -171,6 +175,7 @@ This removes all AWS resources and stops any charges.
 
 - "I built an event-driven order pipeline with API Gateway, Lambda, DynamoDB, SQS, and SNS."
 - "It has both a `POST /orders` endpoint to create orders and a `GET /orders/{order_id}` endpoint to fetch order status."
+- "I implemented idempotency using an `Idempotency-Key` header and a DynamoDB TTL table, so retries never create duplicate orders."
 - "I used Terraform so the entire infrastructure is version-controlled and repeatable."
 - "I used a Dead-Letter Queue for failed payment processing and CloudWatch for observability."
 - "It stays inside the AWS Free Tier, so it costs almost nothing to run."
