@@ -203,9 +203,9 @@ resource "aws_lambda_function" "create_order" {
 
   environment {
     variables = {
-      ORDERS_TABLE       = aws_dynamodb_table.orders.name
-      IDEMPOTENCY_TABLE  = aws_dynamodb_table.idempotency_keys.name
-      ORDER_QUEUE_URL    = aws_sqs_queue.order_queue.url
+      ORDERS_TABLE      = aws_dynamodb_table.orders.name
+      IDEMPOTENCY_TABLE = aws_dynamodb_table.idempotency_keys.name
+      ORDER_QUEUE_URL   = aws_sqs_queue.order_queue.url
     }
   }
 
