@@ -25,6 +25,24 @@ jobs:
       - name: Run pytest
         run: pytest tests/ -v
 
+  openapi:
+    runs-on: ubuntu-latest
+    name: OpenAPI validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validator
+        run: pip install openapi-spec-validator
+
+      - name: Validate OpenAPI spec
+        run: openapi-spec-validator openapi.yaml
+
   terraform:
     runs-on: ubuntu-latest
     name: Terraform lint and validate

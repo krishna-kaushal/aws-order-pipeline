@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: AWS Serverless Order/Payment Pipeline
+  description: |
+    A minimal event-driven order/payment API built on AWS serverless services.
+    
+    - `POST /orders` creates an order and queues it for async payment processing.
+    - `GET /orders/{order_id}` retrieves the latest order status.
+    
+    Include an `Idempotency-Key` header on `POST /orders` to safely retry requests
+    without creating duplicate orders.
+  version: 1.0.0
+
+servers:
+  - url: https://{api_id}.execute-api.ap-south-1.amazonaws.com
+    description: API Gateway endpoint. Replace `{api_id}` with the value from `terraform output api_endpoint`.
+
+paths:
+  /orders:
+    post:
+      summary: Create a new order
+      description: |
+        Accepts an order, stores it in DynamoDB with status `PENDING`, and sends
+        a message to the payment queue for asynchronous processing.
+      operationId: createOrder
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: |
+            Client-generated unique key. Reusing the same key with the same
+            payload returns the original response. Reusing it with a different
+            payload returns `409 Conflict`.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - customer_id
+                - quantity
+                - amount
+              properties:
+                product_id:
+                  type: string
+                  example: prod-123
+                customer_id:
+                  type: string
+                  example: cust-456
+                quantity:
+                  type: integer
+                  minimum: 1
+                  example: 2
+                amount:
+                  type: number
+                  minimum: 0.01
+                  example: 49.99
+      responses:
+        "201":
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: string
+                    format: uuid
+                    example: 550e8400-e29b-41d4-a716-446655440000
+                  status:
+                    type: string
+                    example: PENDING
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: product_id and customer_id are required
+        "409":
+          description: Idempotency key reused with different payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Idempotency-Key already used with different payload
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /orders/{order_id}:
+    get:
+      summary: Get order status
+      description: Returns the current state of an order by its `order_id`.
+      operationId: getOrder
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          description: The UUID returned by `POST /orders`.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Order found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: string
+                    format: uuid
+                    example: 550e8400-e29b-41d4-a716-446655440000
+                  product_id:
+                    type: string
+                    example: prod-123
+                  customer_id:
+                    type: string
+                    example: cust-456
+                  quantity:
+                    type: integer
+                    example: 2
+                  amount:
+                    type: number
+                    example: 49.99
+                  status:
+                    type: string
+                    enum:
+                      - PENDING
+                      - COMPLETED
+                    example: COMPLETED
+        "404":
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: order not found
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string

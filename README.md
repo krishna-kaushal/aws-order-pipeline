@@ -106,10 +106,20 @@ python -m pytest tests/ -v
 Every push and pull request to `main` runs the GitHub Actions workflow in `.github/workflows/ci.yml`:
 
 - **Python tests** with `pytest`
+- **OpenAPI validation** with `openapi-spec-validator`
 - **Terraform format check** with `terraform fmt -check`
 - **Terraform validation** with `terraform validate`
 
-This ensures that code and infrastructure changes are tested before they reach `main`.
+This ensures that code, API spec, and infrastructure changes are tested before they reach `main`.
+
+## API documentation
+
+The API is documented with OpenAPI 3.0 in [`openapi.yaml`](openapi.yaml).
+
+You can view it interactively using:
+
+- [Swagger Editor](https://editor.swagger.io/?url=https://raw.githubusercontent.com/krishna-kaushal/aws-order-pipeline/main/openapi.yaml)
+- [Redoc](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/krishna-kaushal/aws-order-pipeline/main/openapi.yaml)
 
 ## Test on AWS
 
@@ -189,6 +199,7 @@ This removes all AWS resources and stops any charges.
 - "It has both a `POST /orders` endpoint to create orders and a `GET /orders/{order_id}` endpoint to fetch order status."
 - "I implemented idempotency using an `Idempotency-Key` header and a DynamoDB TTL table, so retries never create duplicate orders."
 - "I used Terraform so the entire infrastructure is version-controlled and repeatable."
+- "I documented the API with an OpenAPI 3.0 spec, so anyone can understand the endpoints and expected payloads without reading the code."
 - "I set up GitHub Actions CI/CD to run Python tests and Terraform validation on every pull request."
 - "I used a Dead-Letter Queue for failed payment processing and CloudWatch for observability."
 - "It stays inside the AWS Free Tier, so it costs almost nothing to run."
