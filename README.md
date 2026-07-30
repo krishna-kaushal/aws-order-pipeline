@@ -1,5 +1,7 @@
 # AWS Serverless Order/Payment Pipeline
 
+![CI](https://github.com/krishna-kaushal/aws-order-pipeline/actions/workflows/ci.yml/badge.svg)
+
 A minimal, free-tier-friendly event-driven backend that demonstrates how an e-commerce order pipeline works: receive an order, store it, queue it for async payment processing, update the status, and notify.
 
 Built with **Python** and **Terraform** on the **AWS Free Plan** in `ap-south-1`.
@@ -99,6 +101,16 @@ pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
 
+## CI/CD
+
+Every push and pull request to `main` runs the GitHub Actions workflow in `.github/workflows/ci.yml`:
+
+- **Python tests** with `pytest`
+- **Terraform format check** with `terraform fmt -check`
+- **Terraform validation** with `terraform validate`
+
+This ensures that code and infrastructure changes are tested before they reach `main`.
+
 ## Test on AWS
 
 After deploy, get the API endpoint:
@@ -177,5 +189,6 @@ This removes all AWS resources and stops any charges.
 - "It has both a `POST /orders` endpoint to create orders and a `GET /orders/{order_id}` endpoint to fetch order status."
 - "I implemented idempotency using an `Idempotency-Key` header and a DynamoDB TTL table, so retries never create duplicate orders."
 - "I used Terraform so the entire infrastructure is version-controlled and repeatable."
+- "I set up GitHub Actions CI/CD to run Python tests and Terraform validation on every pull request."
 - "I used a Dead-Letter Queue for failed payment processing and CloudWatch for observability."
 - "It stays inside the AWS Free Tier, so it costs almost nothing to run."
